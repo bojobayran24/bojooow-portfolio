@@ -1,0 +1,512 @@
+/**
+ * ============================================================================
+ *  globals.css — THE DESIGN SYSTEM FOR THE WHOLE SITE
+ * ============================================================================
+ *
+ * This project uses Tailwind CSS v4, which is configured *in CSS* (there is no
+ * tailwind.config.ts any more). Three directives do all the work:
+ *
+ *   @import "tailwindcss"   -> pulls in the framework
+ *   @theme { ... }          -> DEFINES design tokens, which *generates*
+ *                              utilities. `--color-brand` creates `bg-brand`,
+ *                              `text-brand`, `border-brand`, ... for free.
+ *   @utility name { ... }   -> DEFINES a custom utility class of your own.
+ *
+ * WHY THE `inline` KEYWORD ON @theme
+ * ----------------------------------
+ * `@theme inline` makes Tailwind substitute the token's *value* directly into
+ * the generated utility instead of referencing the token. e.g. it emits
+ * `.text-foreground { color: var(--foreground) }`. That indirection is exactly
+ * what we want here, because the `:root` block below can then swap the whole
+ * palette (light/dark) and every utility follows automatically.
+ *
+ * THEME STRATEGY
+ * --------------
+ * This portfolio is DARK-FIRST: the dark palette is the default in `:root`,
+ * and `<html>` also carries the `dark` class (see `app/layout.tsx`) so that
+ * shadcn/ui's own `dark:` variants activate. The `.dark` block re-states the
+ * same values so there is only ever one visual truth.
+ */
+
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* Tell Tailwind that `dark:` should match any element inside a `.dark` root. */
+@custom-variant dark (&:is(.dark *));
+
+/* ==========================================================================
+ * 1. THEME TOKENS
+ * ======================================================================== */
+
+@theme inline {
+  /* --- shadcn/ui semantic tokens -----------------------------------------
+   * These names are a contract: shadcn components reference `bg-card`,
+   * `text-muted-foreground`, and friends. Re-pointing the underlying values
+   * recolours every component on the site without touching a single one. */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* --- Brand accents ------------------------------------------------------
+   * TWO hues, not three. See the note on `--brand-violet` below for why the
+   * third one was removed.
+   *
+   *   brand    -> violet : the primary identity colour
+   *                        (eyebrows, section icons, badges, timeline nodes)
+   *   brand-2  -> cyan   : the secondary, used where a colour break is needed
+   *   brand-3  -> cyan   : kept as a separate slot because it is used for
+   *                        small accent TEXT, which may want a different
+   *                        lightness than the fills in a future tweak
+   *
+   * Declaring them here is what generates `bg-brand`, `text-brand-3`,
+   * `ring-brand/25`, and so on. */
+  --color-brand: var(--brand-violet);
+  --color-brand-2: var(--brand-cyan);
+  --color-brand-3: var(--brand-cyan);
+
+  /* --- Typography ---------------------------------------------------------
+   * The `--font-*` values are injected by `next/font` in `app/layout.tsx`.
+   * next/font self-hosts the files and emits a CSS variable, which avoids the
+   * render-blocking request to Google that a plain <link> would cause.
+   *
+   * These three faces are carried over from the existing portfolio, so the new
+   * site reads as the same brand rather than a redesign:
+   *   Inter           -> body copy
+   *   Space Grotesk   -> display headings
+   *   Fira Code       -> mono / code / eyebrow labels
+   *
+   * Note the deliberate renaming: next/font emits `--font-body`,
+   * `--font-heading` and `--font-code`, and Tailwind's semantic tokens
+   * (`--font-sans`, `--font-display`, `--font-mono`) point at them. Mapping
+   * through an indirection means swapping a typeface is a one-line change here
+   * rather than a find-and-replace through every component. */
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-code);
+  --font-display: var(--font-heading);
+
+  /* --- Radius scale -------------------------------------------------------
+   * shadcn derives every rounded-* step from one value, so changing --radius
+   * restyles the entire site's corner language in a single edit. */
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/**
+ * A second @theme block, this time WITHOUT `inline`, for animations.
+ * Tailwind emits `animation: <value>` for `animate-*` utilities, and the
+ * @keyframes below live at the top level of the file so they are always
+ * included in the output (never tree-shaken away).
+ */
+@theme {
+  --animate-float: float 7s ease-in-out infinite;
+  --animate-float-slow: float 11s ease-in-out infinite;
+  --animate-pulse-glow: pulse-glow 3.2s ease-in-out infinite;
+  --animate-shimmer: shimmer 3.5s linear infinite;
+  --animate-scroll-cue: scroll-cue 2s ease-in-out infinite;
+  --animate-orbit: orbit 24s linear infinite;
+}
+
+/* ==========================================================================
+ * 2. PALETTE
+ * --------------------------------------------------------------------------
+ * Written in OKLCH: a perceptually uniform colour space, so a lightness of
+ * 0.72 genuinely *looks* as bright as another colour at 0.72. Handy for
+ * building a gradient whose three stops feel equally weighted.
+ *
+ * Tailwind v4's default palette is already OKLCH, which is why these slot in
+ * so cleanly next to shadcn's generated tokens.
+ * ======================================================================== */
+
+:root {
+  /* Surfaces: a deep, faintly violet ink rather than pure black. Pure black
+   * flattens depth — an 0.14 lightness floor lets overlays and glows read. */
+  --background: oklch(0.145 0.018 285);
+  --foreground: oklch(0.97 0.004 286);
+  --card: oklch(0.185 0.021 285);
+  --card-foreground: oklch(0.97 0.004 286);
+  --popover: oklch(0.175 0.02 285);
+  --popover-foreground: oklch(0.97 0.004 286);
+
+  /* Primary is a DEEPENED version of the brand violet, not the bright accent
+   * itself. #a855f7 is too light to carry white text at small sizes (roughly
+   * 3:1, which fails WCAG AA). Dropping lightness to 0.56 keeps the hue
+   * identity while pushing white-on-violet to comfortably above 4.5:1. The
+   * bright accent is still used everywhere it's safe — gradients, glows,
+   * borders — just not behind body text. */
+  --primary: oklch(0.56 0.23 300);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.25 0.022 285);
+  --secondary-foreground: oklch(0.97 0.004 286);
+  --muted: oklch(0.23 0.02 285);
+  --muted-foreground: oklch(0.74 0.02 285);
+  --accent: oklch(0.28 0.032 292);
+  --accent-foreground: oklch(0.97 0.004 286);
+  --destructive: oklch(0.66 0.2 25);
+
+  /* Borders are translucent white, not a solid grey. Translucent edges pick up
+   * whatever sits behind them, which is what makes glass surfaces read as
+   * glass instead of as flat grey boxes. */
+  --border: oklch(1 0 0 / 9%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.68 0.21 300);
+
+  /* Chart ramp (unused today, kept so shadcn's chart components stay themed).
+   * First three follow the brand hues; the rest extend the ramp for contrast. */
+  --chart-1: #a855f7;
+  --chart-2: #22d3ee;
+  --chart-3: #e879f9;
+  --chart-4: oklch(0.78 0.16 155);
+  --chart-5: oklch(0.8 0.17 75);
+
+  --radius: 0.75rem;
+
+  /* --- THE BRAND GRADIENT: TWO HUES, NOT THREE ----------------------------
+   * The previous palette carried all three of the old site's neons
+   * (#00f3ff cyan, #bc13fe purple, #ff0055 pink) into the SAME gradient. Three
+   * saturated hues sitting side by side on a 2px bar is exactly what makes a
+   * gradient read as a rainbow: your eye resolves three distinct colours at
+   * once instead of one continuous blend.
+   *
+   * The fix is fewer hues, not less colour. Violet and cyan are close enough
+   * on the wheel that a violet -> cyan blend reads as ONE gradient, and the
+   * pink is gone entirely — it was the hue doing the damage, because #ff0055
+   * is a warm red-pink wedged between two cool tones.
+   *
+   * Both values are also softened a step from the original neons:
+   *   #bc13fe -> #a855f7   (less magenta, more violet = less "arcade")
+   *   #00f3ff -> #22d3ee   (less electric blue = calmer on a dark surface)
+   *
+   * Pure hex rather than OKLCH because these are brand values you may want to
+   * swap by hand. EVERY gradient on the site is built from just these two, so
+   * changing them here re-skins the progress bar, the navbar underline, every
+   * primary button, and the hero's animated headline in one edit. */
+  --brand-violet: #a855f7;
+  --brand-cyan: #22d3ee;
+}
+
+/* Same values, declared under `.dark` so that shadcn's `dark:` variants and
+ * this palette can never disagree. */
+.dark {
+  --background: oklch(0.145 0.018 285);
+  --foreground: oklch(0.97 0.004 286);
+  --card: oklch(0.185 0.021 285);
+  --card-foreground: oklch(0.97 0.004 286);
+  --popover: oklch(0.175 0.02 285);
+  --popover-foreground: oklch(0.97 0.004 286);
+  --primary: oklch(0.56 0.23 300);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.25 0.022 285);
+  --secondary-foreground: oklch(0.97 0.004 286);
+  --muted: oklch(0.23 0.02 285);
+  --muted-foreground: oklch(0.74 0.02 285);
+  --accent: oklch(0.28 0.032 292);
+  --accent-foreground: oklch(0.97 0.004 286);
+  --destructive: oklch(0.66 0.2 25);
+  --border: oklch(1 0 0 / 9%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.68 0.21 300);
+}
+
+/* ==========================================================================
+ * 3. KEYFRAMES
+ * --------------------------------------------------------------------------
+ * These are plain CSS animations, deliberately kept out of Framer Motion.
+ * Rule of thumb used across this codebase:
+ *   • DECORATIVE, LOOPING motion (floating orbs, shimmer, pulsing dots)
+ *       -> CSS keyframes. No JS, runs off the main thread, costs nothing.
+ *   • SCROLL-DRIVEN or INTERACTION-Driven motion (parallax, reveals, tilt)
+ *       -> Framer Motion, because it needs to read scroll/pointer state.
+ * ======================================================================== */
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(0, -22px, 0) scale(1.04);
+  }
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.35);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% center;
+  }
+  100% {
+    background-position: -200% center;
+  }
+}
+
+/* The bobbing "Scroll to explore" cue. Animating the mouse *wheel* dot, not
+   the whole element, reads as "the page scrolls" rather than "this floats". */
+@keyframes scroll-cue {
+  0% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  35% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes orbit {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ==========================================================================
+ * 4. CUSTOM UTILITIES
+ * --------------------------------------------------------------------------
+ * `@utility` registers a real Tailwind utility, which means it participates in
+ * variant syntax: `hover:glass`, `lg:text-gradient`, and correct ordering.
+ * A plain `.class` in a stylesheet would NOT be able to do that.
+ * ======================================================================== */
+
+/** Frosted-glass surface. `color-mix` keeps it tied to the theme tokens so it
+ *  re-tints automatically if you change the palette. */
+@utility glass {
+  background-color: color-mix(in oklab, var(--card) 55%, transparent);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+
+  /* A LIT TOP EDGE, painted as a background-image layer over the flat
+   * background-color above (an image always composites on top of a colour, so
+   * this needs no extra element and no pseudo-element).
+   *
+   * Real objects catch light on their upper face; a flat fill has no upper
+   * face, which is precisely why flat dark cards read as "plain". A 4% white
+   * wash fading out by 40% of the height is enough to imply that face, and it
+   * costs nothing — it is one more stop in an already-painted layer.
+   *
+   * Shared deliberately: every glass surface on the site (skills, experience,
+   * contact, certificate) now speaks the same visual language as the project
+   * cards. Consistency is most of what separates "a portfolio" from "a site
+   * with sections on it". */
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.045) 0%,
+    rgba(255, 255, 255, 0) 40%
+  );
+}
+
+/** The brand gradient applied to text. `background-clip: text` + a transparent
+ *  colour is how you paint a gradient through glyphs. */
+@utility text-gradient {
+  /* Violet -> cyan, nothing else. See the `--brand-violet` note: two hues in a
+   * gradient read as one blend, three read as a rainbow. */
+  background-image: linear-gradient(
+    100deg,
+    var(--brand-violet) 0%,
+    var(--brand-cyan) 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+/** Animated variant of the above — a sheen that sweeps across the glyphs.
+ *  Requires `background-clip: text`, so pair it with `text-gradient`
+ *  behaviour by using this on its own (it repeats both declarations). */
+@utility text-gradient-animated {
+  /* A PALINDROME (starts and ends on the same colour) so the `shimmer` keyframe
+   * can slide it from 200% to -200% and loop without a visible seam. Three
+   * stops instead of the old five: the extra stops existed only to route the
+   * sweep through the pink, which is gone. */
+  background-image: linear-gradient(
+    100deg,
+    var(--brand-violet) 0%,
+    var(--brand-cyan) 50%,
+    var(--brand-violet) 100%
+  );
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: var(--animate-shimmer);
+}
+
+/** Soft outer glow in the brand violet. */
+@utility glow-brand {
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--brand-violet) 28%, transparent),
+    0 18px 50px -18px color-mix(in oklab, var(--brand-violet) 60%, transparent);
+}
+
+/** Big soft halo used behind hero orbs and feature cards. */
+@utility glow-halo {
+  box-shadow: 0 0 120px -20px currentColor;
+}
+
+/** Faint blueprint grid. Drawn with two 1px linear-gradients tiled via
+ *  `background-size` — no image request, and it scales crisply. */
+@utility bg-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--foreground) 6%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--foreground) 6%, transparent) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+
+/** Radial fade mask, used to dissolve the grid into the background at its
+ *  edges so it never terminates in a hard line. */
+@utility mask-fade-edges {
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black 30%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black 30%, transparent 100%);
+}
+
+/** Standard page container: centres content and applies responsive gutters. */
+@utility container-page {
+  width: 100%;
+  margin-inline: auto;
+  max-width: 80rem; /* 1280px — matches Tailwind's `max-w-7xl` */
+  padding-inline: 1.25rem;
+
+  @media (width >= 40rem) {
+    padding-inline: 2rem;
+  }
+  @media (width >= 64rem) {
+    padding-inline: 2.5rem;
+  }
+}
+
+/* ==========================================================================
+ * 5. BASE LAYER
+ * ======================================================================== */
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    @apply font-sans;
+
+    /* Smooth in-page anchor scrolling (`#projects`, nav links, ...).
+     * IMPORTANT — Next.js 16 only: Next used to override this during route
+     * transitions. It no longer does, so `app/layout.tsx` sets
+     * `data-scroll-behavior="smooth"` on <html> to opt back into that
+     * behaviour (instant jump on navigation, smooth within a page). */
+    scroll-behavior: smooth;
+
+    /* The navbar is `position: fixed`, so it would otherwise cover the top of
+     * whichever section you anchor-jump to. `scroll-padding-top` pushes the
+     * scroll target down by the navbar's height. This is the modern, one-line
+     * replacement for the `scroll-margin-top` sprinkling we used to need. */
+    scroll-padding-top: 6rem;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+
+    /* Parallax layers briefly overflow their container. `overflow-x: clip`
+     * suppresses the resulting horizontal scrollbar WITHOUT creating a scroll
+     * container — unlike `hidden`, which would break `position: sticky` for
+     * every descendant (including the timeline in the Experience section). */
+    overflow-x: clip;
+
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--brand-violet) 45%, transparent);
+    color: var(--foreground);
+  }
+
+  /* Firefox scrollbar theming. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--brand-violet) 55%, transparent) transparent;
+  }
+
+  /* WebKit scrollbar theming. */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: color-mix(in oklab, var(--brand-violet) 55%, transparent);
+    border-radius: 9999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in oklab, var(--brand-cyan) 55%, transparent);
+  }
+}
+
+/* ==========================================================================
+ * 6. ACCESSIBILITY — RESPECTING `prefers-reduced-motion`
+ * --------------------------------------------------------------------------
+ * Roughly 1 in 3 people who enable "Reduce Motion" do so because motion makes
+ * them physically ill. We honour it in two places:
+ *   1. Here, for the CSS keyframe animations above.
+ *   2. In JS, via Framer Motion's `useReducedMotion()` hook (see
+ *      `components/animations/*`), for scroll-driven values.
+ * ======================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
